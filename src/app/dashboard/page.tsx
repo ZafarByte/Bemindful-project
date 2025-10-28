@@ -1,5 +1,4 @@
 "use client";
-import { div } from "framer-motion/client";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Container } from "@/components/ui/container";
@@ -10,20 +9,45 @@ import {
     CardTitle,
     CardDescription,
 } from "@/components/ui/card";
-import { Sparkles, MessageSquare, ArrowRight, BrainCircuit, Heart, Activity, Brain, Trophy,Loader2 } from "lucide-react";
+import { Sparkles, MessageSquare, ArrowRight, BrainCircuit, Heart, Activity, Brain, Trophy, Loader2, Calendar, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
 import {
-  addDays,
-  format,
-  subDays,
-  startOfDay,
-  isWithinInterval,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { AnxietyGames } from "@/games/anxiety-games";
+import { 
+    format,
+    subDays,
 } from "date-fns";
-
+interface DailyStats {
+    moodScore: number | null;
+    completionRate: number;
+    mindfulnessCount: number;
+    totalActivities: number;
+    lastUpdated: Date;
+}
+interface Activity {
+    id: string;
+    userId: string | null;
+    type: string;
+    name: string;
+    description: string | null;
+    timestamp: Date;
+    duration: number | null;
+    completed: boolean;
+    moodScore: number | null;
+    moodNote: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
 export default function DashboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [showMoodModal, setShowMoodModal] = useState(false);
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
@@ -63,6 +87,21 @@ export default function DashboardPage() {
             description: "Planned for today",
         },
     ];
+    const [dailyStats, setDailyStats] = useState<DailyStats>({
+        moodScore: null,
+        completionRate: 100,
+        mindfulnessCount: 0,
+        totalActivities: 0,
+        lastUpdated: new Date(),
+    });
+    const [insights, setInsights] = useState<
+        {
+            title: string;
+            description: string;
+            icon: any;
+            priority: "low" | "medium" | "high";
+        }[]
+    >([]);
 
     return (
         <div className="min-h-screen bg-background p-8">
@@ -184,8 +223,6 @@ export default function DashboardPage() {
 
                             </CardContent>
                         </Card>
-
-
                         <Card className="border-primary/10">
                             <CardHeader>
                                 <div className="flex items-center justify-between">
@@ -196,22 +233,62 @@ export default function DashboardPage() {
                                             {format(new Date(), "MMMM d, yyyy")}
                                         </CardDescription>
                                     </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                    >
+                                        <Loader2 className={cn("h-4 w-4", "animate-spin")} />
+                                    </Button>
                                 </div>
                             </CardHeader>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                            >
-                                 <Loader2 className={cn("h-4 w-4", "animate-spin")} />
-                            </Button>
+                            <CardContent>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {wellnessStats.map((stat) => (
+                                        <div
+                                            key={stat.title}
+                                            className={cn(
+                                                "p-4 rounded-lg transition-all duration-200 hover:scale-[1.02]",
+                                                stat.bgColor
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <stat.icon className={cn("w-5 h-5", stat.color)} />
+                                                <p className="text-sm font-medium">{stat.title}</p>
+                                            </div>
+                                            <p className="text-2xl font-bold mt-2">{stat.value}</p>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                                {stat.description}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
                         </Card>
+
+                    </div>
+                    {/*Content grid for games*/}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-3 space-y-6">
+                             <AnxietyGames  />
+                        </div>
                     </div>
                 </div>
+            </Container >
 
+            {/* Mood tracking modal */}
+            <Dialog open={showMoodModal} onOpenChange={setShowMoodModal}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>How are you feeling?</DialogTitle>
+                        <DialogDescription>
+                            Move the slider to track your current mood
+                        </DialogDescription>
+                    </DialogHeader>
+                    {/*Mood form*/}
 
-            </Container>
-
-        </div>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 }
