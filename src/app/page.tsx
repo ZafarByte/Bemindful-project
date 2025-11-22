@@ -8,12 +8,8 @@ import { Slider ,} from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 export default function Home() {
   const emotions = [
@@ -75,6 +71,7 @@ export default function Home() {
           <div className="absolute w-[400px] h-[400px] rounded-full bg-secondary/10 blur-3xl bottom-0 right-0 animate-pulse delay-700" />
           <div className="absolute inset-0 bg-background/80 backdrop-blur-3xl" />
         </div>
+        
         <Ripple className="opacity-60" />
 
         <motion.div

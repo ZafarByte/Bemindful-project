@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AudioWaveform, Menu, MessageCircle, X } from "lucide-react";
+import { AudioWaveform, Menu, X } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { SignInButton } from "./auth/sign-in-button";
 import { useState } from "react";
