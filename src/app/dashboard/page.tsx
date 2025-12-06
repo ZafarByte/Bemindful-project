@@ -9,7 +9,7 @@ import {
     CardTitle,
     CardDescription,
 } from "@/components/ui/card";
-import { Sparkles, MessageSquare, ArrowRight, BrainCircuit, Heart, Activity, Brain, Trophy, Loader2, Calendar, Moon, Sun } from "lucide-react";
+import { Sparkles, MessageSquare, ArrowRight, BrainCircuit, Heart, Activity as ActivityIcon, Brain, Trophy, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -18,14 +18,13 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import { AnxietyGames } from "@/games/anxiety-games";
-import {
-    format,
-    subDays,
-} from "date-fns";
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
 import { MoodForm } from "@/mood/mood-form";
 import { ActivityLogger } from "@/activities/activity-logger";
+
 interface DailyStats {
     moodScore: number | null;
     completionRate: number;
@@ -33,7 +32,9 @@ interface DailyStats {
     totalActivities: number;
     lastUpdated: Date;
 }
-interface Activity {
+
+// renamed to avoid collision with Activity icon import
+interface ActivityItem {
     id: string;
     userId: string | null;
     type: string;
@@ -47,9 +48,11 @@ interface Activity {
     createdAt: Date;
     updatedAt: Date;
 }
+
 export default function DashboardPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showMoodModal, setShowMoodModal] = useState(false);
+    const router = useRouter();
     const [showActivityLogger, setShowActivityLogger] = useState(false);
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -57,7 +60,14 @@ export default function DashboardPage() {
     }, []);
     const [isSavingMood, setIsSavingMood] = useState(false);
 
-    const wellnessStats = [
+    const wellnessStats: {
+        title: string;
+        value: string;
+        icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+        color: string;
+        bgColor: string;
+        description: string;
+    }[] = [
         {
             title: "Mood Score",
             value: "No data",
@@ -85,12 +95,13 @@ export default function DashboardPage() {
         {
             title: "Total Activities",
             value: "0",
-            icon: Activity,
+            icon: ActivityIcon,
             color: "text-blue-500",
             bgColor: "bg-blue-500/10",
             description: "Planned for today",
         },
     ];
+
     const [dailyStats, setDailyStats] = useState<DailyStats>({
         moodScore: null,
         completionRate: 100,
@@ -98,18 +109,14 @@ export default function DashboardPage() {
         totalActivities: 0,
         lastUpdated: new Date(),
     });
-    const [insights, setInsights] = useState<
-        {
-            title: string;
-            description: string;
-            icon: any;
-            priority: "low" | "medium" | "high";
-        }[]
-    >([]);
+
+    // removed insights state as it wasn't used; re-add if you plan to show it
+    // const [insights, setInsights] = useState<...>([]);
 
     const handleMoodSubmit = async (data: { moodScore: number }) => {
         setIsSavingMood(true);
         try {
+            // TODO: actually save mood to your backend/storage here
             setShowMoodModal(false);
         } catch (error) {
             console.error("Error saving mood:", error);
@@ -117,9 +124,22 @@ export default function DashboardPage() {
             setIsSavingMood(false);
         }
     };
-      const handleAICheckIn = () => {
-    setShowActivityLogger(true);
-  };
+
+    const handleAICheckIn = () => {
+        setShowActivityLogger(true);
+    };
+   const handleStartTherapy = async () => {
+  try {
+    console.log("Attempting client navigation to /therapy/new");
+    await router.push("/therapy/new");
+    console.log("router.push resolved — check URL and page render");
+  } catch (err) {
+    console.error("router.push threw:", err);
+    // fallback: force a full page load
+    window.location.href = "/therapy/new";
+  }
+};
+
     return (
         <div className="min-h-screen bg-background p-8">
             <Container className="pt-20 pb-8 space-y-6">
@@ -139,6 +159,7 @@ export default function DashboardPage() {
                         </p>
                     </motion.div>
                 </div>
+
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <Card className="border-primary/10 relative overflow-hidden group">
@@ -156,6 +177,7 @@ export default function DashboardPage() {
                                             </p>
                                         </div>
                                     </div>
+
                                     <div className="grid gap-3">
                                         <Button
                                             variant="default"
@@ -164,6 +186,7 @@ export default function DashboardPage() {
                                                 "bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90",
                                                 "transition-all duration-200 group-hover:translate-y-[-2px]"
                                             )}
+                                            onClick={handleStartTherapy}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
@@ -206,8 +229,8 @@ export default function DashboardPage() {
                                                     >
                                                         <Heart className="w-5 h-5 text-rose-500" />
                                                     </motion.div>
-
                                                 </div>
+
                                                 <div>
                                                     <div className="font-medium text-sm">Track Mood</div>
                                                     <div className="text-xs text-muted-foreground mt-0.5">
@@ -223,7 +246,7 @@ export default function DashboardPage() {
                                                     "justify-center items-center text-center",
                                                     "transition-all duration-200 group-hover:translate-y-[-2px]"
                                                 )}
-                                                 onClick={handleAICheckIn}
+                                                onClick={handleAICheckIn}
                                             >
                                                 <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-2">
                                                     <BrainCircuit className="w-5 h-5 text-blue-500" />
@@ -237,11 +260,10 @@ export default function DashboardPage() {
                                             </Button>
                                         </div>
                                     </div>
-
                                 </div>
-
                             </CardContent>
                         </Card>
+
                         <Card className="border-primary/10">
                             <CardHeader>
                                 <div className="flex items-center justify-between">
@@ -284,8 +306,8 @@ export default function DashboardPage() {
                                 </div>
                             </CardContent>
                         </Card>
-
                     </div>
+
                     {/*Content grid for games*/}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-3 space-y-6">
@@ -293,7 +315,7 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-            </Container >
+            </Container>
 
             {/* Mood tracking modal */}
             <Dialog open={showMoodModal} onOpenChange={setShowMoodModal}>
@@ -307,10 +329,11 @@ export default function DashboardPage() {
                     <MoodForm onSubmit={handleMoodSubmit} isLoading={isSavingMood} />
                 </DialogContent>
             </Dialog>
+
             <ActivityLogger
                 open={showActivityLogger}
                 onOpenChange={setShowActivityLogger}
             />
-        </div >
+        </div>
     );
 }
