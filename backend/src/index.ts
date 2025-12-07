@@ -5,9 +5,20 @@ import { inngest } from "./inngest/index";
 import { logger } from "./utils/logger";
 import { functions as inngestFunctions } from "./inngest/functions";
 import { connectDB } from "./utils/db";
+import dotenv from "dotenv";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import authRoutes from "./routes/auth";
+
+dotenv.config();
+
 const app = express();
 app.use(express.json());
-
+app.use(helmet());
+app.use(cors());
+app.use(morgan("dev"));
+app.use("/api/auth", authRoutes);
 // mount Inngest on /api/inngest
 app.use("/api/inngest", serve({ client: inngest, functions: inngestFunctions }));
 
