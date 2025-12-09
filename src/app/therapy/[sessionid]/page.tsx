@@ -27,10 +27,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BreathingGame } from "@/components/games/breathing-game";
-import { ZenGarden } from "@/components/games/zen-garden";
-import { ForestGame } from "@/components/games/forest-game";
-import { OceanWaves } from "@/components/games/ocean-waves";
+import { BreathingGame } from "@/../components/games/breathing-game";
+import { ZenGarden } from "@/../components/games/zen-garden";
+import { ForestGame } from "@/../components/games/forest-game";
+import { OceanWaves } from "@/../components/games/ocean-waves";
 import { Badge } from "@/components/ui/badge";
 import {
   createChatSession,
@@ -82,7 +82,7 @@ const glowAnimation = {
     transition: {
       duration: 3,
       repeat: Infinity,
-      ease: "easeInOut",
+      ease: [0.42, 0, 0.58, 1] as any,
     },
   },
 };

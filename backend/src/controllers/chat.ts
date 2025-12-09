@@ -10,8 +10,47 @@ import { Types } from "mongoose";
 
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY || "AIzaSyARbF3u6dc6DPXgtrBx7j_ZXgz31z1LLPI"
+  process.env.GOOGLE_GENAI_API_KEY || "AIzaSyAvXYWts2PV-2vXDWHCBQklnfiISI6voOM"
 );
+
+// Rate limiting configuration
+const RATE_LIMIT_RETRY_DELAY = 60000; // 60 seconds
+const MAX_RETRIES = 3;
+
+// Function to check if error is a quota/rate limit error
+const isQuotaExceeded = (error: any): boolean => {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  return (
+    errorMessage.includes("429") ||
+    errorMessage.includes("Too Many Requests") ||
+    errorMessage.includes("Quota exceeded") ||
+    errorMessage.includes("RESOURCE_EXHAUSTED")
+  );
+};
+
+// Function to get retry delay from error response
+const getRetryDelay = (error: any): number => {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const match = errorMessage.match(/Please retry in (\d+(?:\.\d+)?)/);
+  if (match) {
+    return Math.ceil(parseFloat(match[1]) * 1000);
+  }
+  return RATE_LIMIT_RETRY_DELAY;
+};
+
+// Fallback response generator when API is unavailable
+const generateFallbackResponse = (message: string): { response: string; analysis: any } => {
+  return {
+    response: `I appreciate you sharing that with me. I'm currently experiencing high demand and need to focus on being fully present for our conversation. Please try again in a few moments. In the meantime, you might find one of our mindfulness exercises helpful.`,
+    analysis: {
+      emotionalState: "processing",
+      themes: [],
+      riskLevel: 0,
+      recommendedApproach: "supportive",
+      progressIndicators: ["Session continued"]
+    }
+  };
+};
 
 // Create a new chat session
 export const createChatSession = async (req: Request, res: Response) => {

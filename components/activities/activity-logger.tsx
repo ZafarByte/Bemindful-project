@@ -79,7 +79,7 @@ export function ActivityLogger({
             onOpenChange(false);
 
             // small feedback (replace with toast in real app)
-            alert("Activity logged (mock)!");
+            alert("Activity logged");
         }, 900);
     };
 

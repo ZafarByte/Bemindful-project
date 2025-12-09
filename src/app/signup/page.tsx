@@ -9,7 +9,7 @@ import { Container } from "@/components/ui/container";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Lock, Mail, User } from "lucide-react";
-import { registerUser } from "../../../lib/api/auth";
+import { registerUser } from "@/lib/api/auth";
 
 export default function LoginPage() {
     const router = useRouter();
