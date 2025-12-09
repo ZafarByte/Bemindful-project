@@ -9,13 +9,33 @@ import { Container } from "@/components/ui/container";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Lock, Mail, User } from "lucide-react";
+import { registerUser } from "../../../lib/api/auth";
 
 export default function LoginPage() {
-    const [email, setEmail] = useState("");
+    const router = useRouter();
     const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        if (password !== confirmPassword) {
+            setError("Passwords do not match.");
+            return;
+        }
+        setLoading(true);
+        try {
+            await registerUser(name, email, password);
+            router.push("/login");
+        } catch (err: any) {
+            setError(err.message || "Signup failed. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
     return (
         <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/30">
             <Container className="flex flex-col items-center justify-center w-full">
@@ -28,7 +48,7 @@ export default function LoginPage() {
                             Create your account to start your journey.
                         </p>
                     </div>
-                    <form className="space-y-6">
+                    <form className="space-y-6" onSubmit={handleSubmit}>
                         <div className="space-y-3">
                             <div className="flex flex-col md:flex-row gap-4">
                                 <div className="flex-1">
@@ -113,12 +133,18 @@ export default function LoginPage() {
                                 </div>
                             </div>
                         </div>
+                        {error && (
+                            <p className="text-red-500 text-base text-center font-medium">
+                                {error}
+                            </p>
+                        )}
                         <Button
                             className="w-full py-2 text-base rounded-xl font-bold bg-gradient-to-r from-primary to-primary/80 shadow-md hover:from-primary/80 hover:to-primary"
                             size="lg"
                             type="submit"
+                            disabled={loading}
                         >
-                            Sign Up
+                            {loading ? "Signing up..." : "Sign Up"}
                         </Button>
                     </form>
                     <div className="my-6 border-t border-primary/10" />
@@ -131,7 +157,7 @@ export default function LoginPage() {
                                 href="/login"
                                 className="text-primary font-semibold underline hover:text-primary/80 transition-colors"
                             >
-                                 Sign in
+                                Sign in
                             </Link>
                         </div>
                     </div>

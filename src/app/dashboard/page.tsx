@@ -19,11 +19,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { AnxietyGames } from "@/games/anxiety-games";
+import { useSession } from "../../../lib/context/session-context";
+import { AnxietyGames } from "../../../components/games/anxiety-games";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { MoodForm } from "@/mood/mood-form";
-import { ActivityLogger } from "@/activities/activity-logger";
+import { MoodForm } from "../../../components/mood/mood-form";
+import { ActivityLogger } from "../../../components/activities/activity-logger";
 
 interface DailyStats {
     moodScore: number | null;
@@ -50,6 +51,8 @@ interface ActivityItem {
 }
 
 export default function DashboardPage() {
+    const { checkSession } = useSession();
+     const {isAuthenticated,logout,user} = useSession();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showMoodModal, setShowMoodModal] = useState(false);
     const router = useRouter();
@@ -149,7 +152,9 @@ export default function DashboardPage() {
                         animate={{ opacity: 1, x: 0 }}
                         className="space-y-2"
                     >
-                        <h1 className="text-3xl font-bold">Welcome back</h1>
+                        <h1 className="text-3xl font-bold">
+                            Welcome back, {user?.name || "there"}
+                        </h1>
                         <p className="text-muted-foreground text-sm ">
                             {currentTime.toLocaleDateString("en-US", {
                                 weekday: "long",

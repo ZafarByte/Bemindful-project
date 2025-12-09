@@ -3,6 +3,8 @@ import express from "express";
 import {
   createChatSession,
   getChatSession,
+  // list chat sessions for a user
+  getChatSessions,
   sendMessage,
   getChatHistory,
 } from "../controllers/chat";
@@ -15,6 +17,9 @@ router.use(auth);
 
 // Create a new chat session
 router.post("/sessions", createChatSession);
+
+// List chat sessions for the authenticated user
+router.get("/sessions", getChatSessions);
 
 // Get a specific chat session
 router.get("/sessions/:sessionId", getChatSession);

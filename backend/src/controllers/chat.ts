@@ -270,3 +270,31 @@ export const getChatHistory = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error fetching chat history" });
   }
 };
+
+// List chat sessions for the authenticated user
+export const getChatSessions = async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Unauthorized - User not authenticated" });
+    }
+
+    const userId = new Types.ObjectId(req.user.id);
+
+    const sessions = await ChatSession.find({ userId })
+      .sort({ startTime: -1 })
+      .select("sessionId startTime status messages")
+      .exec();
+
+    const response = sessions.map((s) => ({
+      sessionId: s.sessionId,
+      startTime: s.startTime,
+      status: s.status,
+      lastMessage: s.messages && s.messages.length ? s.messages[s.messages.length - 1] : null,
+    }));
+
+    res.json(response);
+  } catch (error) {
+    logger.error("Error fetching chat sessions:", error);
+    res.status(500).json({ message: "Error fetching chat sessions" });
+  }
+};

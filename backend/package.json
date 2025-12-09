@@ -25,6 +25,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.1",
     "morgan": "^1.10.1",
+    "next-auth": "^4.24.13",
     "uuid": "^13.0.0",
     "winston": "^3.18.3"
   },
