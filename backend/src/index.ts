@@ -11,6 +11,9 @@ import authRouter from "./routes/auth";
 import chatRouter from "./routes/chat";
 import moodRouter from "./routes/mood";
 import activityRouter from "./routes/activity";
+import stressRouter from "./routes/stress";
+import journalRouter from "./routes/journal";
+import reminderRouter from "./routes/reminder";
 import { connectDB } from "./utils/db";
 import { inngest } from "./inngest/client";
 import { functions as inngestFunctions } from "./inngest/functions";
@@ -38,6 +41,9 @@ app.use("/auth", authRouter);
 app.use("/chat", chatRouter);
 app.use("/api/mood", moodRouter);
 app.use("/api/activity", activityRouter);
+app.use("/api/stress", stressRouter);
+app.use("/api/journal", journalRouter);
+app.use("/api/reminder", reminderRouter);
 
 app.use(errorHandler);
 const startServer = async () => {
