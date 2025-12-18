@@ -10,47 +10,8 @@ import { Types } from "mongoose";
 
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(
-  process.env.GOOGLE_GENAI_API_KEY || "AIzaSyAvXYWts2PV-2vXDWHCBQklnfiISI6voOM"
+  process.env.GEMINI_API_KEY || "AIzaSyAaSrg1TkTSu05_--vnEo0bK5F3a8Fik8E"
 );
-
-// Rate limiting configuration
-const RATE_LIMIT_RETRY_DELAY = 60000; // 60 seconds
-const MAX_RETRIES = 3;
-
-// Function to check if error is a quota/rate limit error
-const isQuotaExceeded = (error: any): boolean => {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  return (
-    errorMessage.includes("429") ||
-    errorMessage.includes("Too Many Requests") ||
-    errorMessage.includes("Quota exceeded") ||
-    errorMessage.includes("RESOURCE_EXHAUSTED")
-  );
-};
-
-// Function to get retry delay from error response
-const getRetryDelay = (error: any): number => {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  const match = errorMessage.match(/Please retry in (\d+(?:\.\d+)?)/);
-  if (match) {
-    return Math.ceil(parseFloat(match[1]) * 1000);
-  }
-  return RATE_LIMIT_RETRY_DELAY;
-};
-
-// Fallback response generator when API is unavailable
-const generateFallbackResponse = (message: string): { response: string; analysis: any } => {
-  return {
-    response: `I appreciate you sharing that with me. I'm currently experiencing high demand and need to focus on being fully present for our conversation. Please try again in a few moments. In the meantime, you might find one of our mindfulness exercises helpful.`,
-    analysis: {
-      emotionalState: "processing",
-      themes: [],
-      riskLevel: 0,
-      recommendedApproach: "supportive",
-      progressIndicators: ["Session continued"]
-    }
-  };
-};
 
 // Create a new chat session
 export const createChatSession = async (req: Request, res: Response) => {
@@ -149,7 +110,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     await inngest.send(event);
 
     // Process the message directly using Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // Analyze the message
     const analysisPrompt = `Analyze this therapy message and provide insights. Return ONLY a valid JSON object with no markdown formatting or additional text.
@@ -271,6 +232,22 @@ export const getSessionHistory = async (req: Request, res: Response) => {
   }
 };
 
+// List chat sessions for the authenticated user
+export const getChatSessions = async (req: Request, res: Response) => {
+  try {
+    const userId = new Types.ObjectId(req.user.id);
+    const sessions = await ChatSession.find({ userId })
+      .sort({ startTime: -1 })
+      .select("sessionId startTime status")
+      .lean();
+
+    res.json(sessions);
+  } catch (error) {
+    logger.error("Error listing chat sessions:", error);
+    res.status(500).json({ message: "Error listing chat sessions" });
+  }
+};
+
 export const getChatSession = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
@@ -307,33 +284,5 @@ export const getChatHistory = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error("Error fetching chat history:", error);
     res.status(500).json({ message: "Error fetching chat history" });
-  }
-};
-
-// List chat sessions for the authenticated user
-export const getChatSessions = async (req: Request, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ message: "Unauthorized - User not authenticated" });
-    }
-
-    const userId = new Types.ObjectId(req.user.id);
-
-    const sessions = await ChatSession.find({ userId })
-      .sort({ startTime: -1 })
-      .select("sessionId startTime status messages")
-      .exec();
-
-    const response = sessions.map((s) => ({
-      sessionId: s.sessionId,
-      startTime: s.startTime,
-      status: s.status,
-      lastMessage: s.messages && s.messages.length ? s.messages[s.messages.length - 1] : null,
-    }));
-
-    res.json(response);
-  } catch (error) {
-    logger.error("Error fetching chat sessions:", error);
-    res.status(500).json({ message: "Error fetching chat sessions" });
   }
 };

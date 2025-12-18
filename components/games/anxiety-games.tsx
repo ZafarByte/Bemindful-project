@@ -100,7 +100,7 @@ export const AnxietyGames = ({ onGamePlayed }: AnxietyGamesProps) => {
   };
   return(
        <>
-       <Card className="border-primary/10">
+       <Card className="border-primary/10" id="anxiety-games">
         <CardHeader>
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <Gamepad2 className="h-5 w-5 text-primary" />

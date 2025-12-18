@@ -31,12 +31,16 @@ export async function trackMood(
     body: JSON.stringify(data),
   });
 
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await response.json() : await response.text();
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to track mood");
+    const message = isJson ? payload?.message : payload;
+    throw new Error(message || "Failed to track mood");
   }
 
-  return response.json();
+  return payload;
 }
 
 export async function getMoodHistory(params?: {
@@ -52,18 +56,22 @@ export async function getMoodHistory(params?: {
   if (params?.endDate) queryParams.append("endDate", params.endDate);
   if (params?.limit) queryParams.append("limit", params.limit.toString());
 
-  const response = await fetch(`/api/mood/history?${queryParams.toString()}`, {
+  const response = await fetch(`/api/mood?${queryParams.toString()}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
 
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await response.json() : await response.text();
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch mood history");
+    const message = isJson ? payload?.message : payload;
+    throw new Error(message || "Failed to fetch mood history");
   }
 
-  return response.json();
+  return payload;
 }
 
 export async function getMoodStats(
@@ -81,10 +89,14 @@ export async function getMoodStats(
     },
   });
 
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await response.json() : await response.text();
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Failed to fetch mood statistics");
+    const message = isJson ? payload?.message : payload;
+    throw new Error(message || "Failed to fetch mood statistics");
   }
 
-  return response.json();
+  return payload;
 }

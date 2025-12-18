@@ -190,10 +190,9 @@ export const getDailyCheckinHistory = async (
     res.json({
       success: true,
       data: history.map((entry) => ({
-        timestamp: entry.createdAt ? new Date(entry.createdAt).toISOString() : new Date().toISOString(),
+        timestamp: entry.createdAt,
         score: Math.round(entry.combinedScore * 100), // Convert 0-1 to 0-100
         dailyScore: Math.round(entry.dailyScore * 100),
-        createdAt: entry.createdAt ? new Date(entry.createdAt).toISOString() : new Date().toISOString(),
       })),
     });
   } catch (error) {

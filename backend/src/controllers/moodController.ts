@@ -38,3 +38,30 @@ export const createMood = async (
     next(error);
   }
 };
+
+// Get mood history (latest first, optional limit)
+export const getMoodHistory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit as string) || 30, 90);
+
+    const history = await Mood.find({ userId })
+      .sort({ timestamp: -1 })
+      .limit(limit);
+
+    res.json({
+      success: true,
+      data: history,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -4,7 +4,7 @@ import { logger } from "../utils/logger";
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(
-  process.env.GOOGLE_GENAI_API_KEY || "AIzaSyBsKahcEi1TPu2qcIz5vDQTDbbwc0sn0yI"
+  process.env.GOOGLE_GENAI_API_KEY || "AIzaSyAaSrg1TkTSu05_--vnEo0bK5F3a8Fik8E"
 );
 
 // Function to handle chat message processing
@@ -41,7 +41,8 @@ export const processChatMessage = inngest.createFunction(
       // Analyze the message using Gemini
       const analysis = await step.run("analyze-message", async () => {
         try {
-          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        // Initialize Model
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
           const prompt = `Analyze this therapy message and provide insights. Return ONLY a valid JSON object with no markdown formatting or additional text.
           Message: ${message}
@@ -108,7 +109,8 @@ export const processChatMessage = inngest.createFunction(
       // Generate therapeutic response
       const response = await step.run("generate-response", async () => {
         try {
-          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+          // Initialize Model
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
           const prompt = `${systemPrompt}
           
@@ -178,7 +180,8 @@ export const analyzeTherapySession = inngest.createFunction(
 
       // Analyze the session using Gemini
       const analysis = await step.run("analyze-with-gemini", async () => {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        // Initialize Model
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `Analyze this therapy session and provide insights:
         Session Content: ${sessionContent}
@@ -248,7 +251,8 @@ export const generateActivityRecommendations = inngest.createFunction(
       const recommendations = await step.run(
         "generate-recommendations",
         async () => {
-          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+         // Initialize Model
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
           const prompt = `Based on the following user context, generate personalized activity recommendations:
         User Context: ${JSON.stringify(userContext)}

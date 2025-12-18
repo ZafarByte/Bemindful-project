@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Container } from "@/components/ui/container";
 import {
@@ -25,6 +25,11 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { MoodForm } from "../../../components/mood/mood-form";
 import { ActivityLogger } from "../../../components/activities/activity-logger";
+import { StressSurveyModal } from "@/components/stress/stress-survey";
+import { fetchStressSummary, submitBaseline, submitDaily } from "@/lib/api/stress";
+import { logActivity as logActivityApi } from "@/lib/api/activity";
+import { combinedScore as combineScores, labelScore } from "@/lib/stress-questions";
+import { MoodTrend } from "@/components/mood/mood-trend";
 
 interface DailyStats {
     moodScore: number | null;
@@ -50,6 +55,18 @@ interface ActivityItem {
     updatedAt: Date;
 }
 
+interface StressSummary {
+    hasBaseline: boolean;
+    baselineScore: number | null;
+    baselineCompletedAt: string | null;
+    latestDaily: {
+        dailyScore: number;
+        combinedScore: number;
+        label: string;
+        createdAt: string;
+    } | null;
+}
+
 export default function DashboardPage() {
     const { checkSession } = useSession();
      const {isAuthenticated,logout,user} = useSession();
@@ -57,53 +74,115 @@ export default function DashboardPage() {
     const [showMoodModal, setShowMoodModal] = useState(false);
     const router = useRouter();
     const [showActivityLogger, setShowActivityLogger] = useState(false);
+    const [stressSummary, setStressSummary] = useState<StressSummary | null>(null);
+    const [loadingStress, setLoadingStress] = useState(true);
+    const [showBaselineModal, setShowBaselineModal] = useState(false);
+    const [showDailyModal, setShowDailyModal] = useState(false);
+    const [journalEntry, setJournalEntry] = useState("");
+    const [journalPrompt, setJournalPrompt] = useState<string>("Write one thing that felt heavy today, and one small thing that helped.");
+    const [isSavingJournal, setIsSavingJournal] = useState(false);
+
+    const isToday = (isoDate: string | null | undefined) => {
+        if (!isoDate) return false;
+        const target = new Date(isoDate);
+        const now = new Date();
+        return (
+            target.getFullYear() === now.getFullYear() &&
+            target.getMonth() === now.getMonth() &&
+            target.getDate() === now.getDate()
+        );
+    };
+
+    useEffect(() => {
+        const loadStress = async () => {
+            const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+            if (!token) {
+                setLoadingStress(false);
+                return;
+            }
+            try {
+                const summary = await fetchStressSummary();
+                setStressSummary(summary);
+                if (!summary.hasBaseline) {
+                    setShowBaselineModal(true);
+                } else if (!isToday(summary.latestDaily?.createdAt ?? null)) {
+                    setShowDailyModal(true);
+                }
+            } catch (error) {
+                console.error("Failed to load stress summary", error);
+            } finally {
+                setLoadingStress(false);
+            }
+        };
+
+        loadStress();
+    }, []);
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
     const [isSavingMood, setIsSavingMood] = useState(false);
 
-    const wellnessStats: {
-        title: string;
-        value: string;
-        icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-        color: string;
-        bgColor: string;
-        description: string;
-    }[] = [
-        {
-            title: "Mood Score",
-            value: "No data",
-            icon: Brain,
-            color: "text-purple-500",
-            bgColor: "bg-purple-500/10",
-            description: "Today's average mood",
-        },
-        {
-            title: "Completion Rate",
-            value: "100%",
-            icon: Trophy,
-            color: "text-yellow-500",
-            bgColor: "bg-yellow-500/10",
-            description: "Perfect completion rate",
-        },
-        {
-            title: "Therapy Sessions",
-            value: "0 sessions",
-            icon: Heart,
-            color: "text-rose-500",
-            bgColor: "bg-rose-500/10",
-            description: "Total sessions completed",
-        },
-        {
-            title: "Total Activities",
-            value: "0",
-            icon: ActivityIcon,
-            color: "text-blue-500",
-            bgColor: "bg-blue-500/10",
-            description: "Planned for today",
-        },
-    ];
+    const combinedValue = stressSummary?.latestDaily?.combinedScore ?? null;
+    const baselineScore = stressSummary?.baselineScore ?? null;
+    const dailyScore = stressSummary?.latestDaily?.dailyScore ?? null;
+    const stressLabel =
+        stressSummary?.latestDaily?.label ??
+        (stressSummary?.hasBaseline ? "Baseline captured" : "Baseline needed");
+    const resolvedMoodScore = combinedValue ?? dailyScore ?? baselineScore ?? null;
+
+    const wellnessStats = useMemo(() => {
+        const moodValue =
+            combinedValue !== null
+                ? `${Math.round(combinedValue * 100)}%`
+                : dailyScore !== null
+                ? `${Math.round(dailyScore * 100)}%`
+                : baselineScore !== null
+                ? `${Math.round(baselineScore * 100)}%`
+                : "No data";
+
+        return [
+            {
+                title: "Mood Score",
+                value: moodValue,
+                icon: Brain,
+                color: "text-purple-500",
+                bgColor: "bg-purple-500/10",
+                description: "Blended baseline + today",
+            },
+            {
+                title: "Completion Rate",
+                value: stressSummary?.latestDaily ? "100%" : "0%",
+                icon: Trophy,
+                color: "text-yellow-500",
+                bgColor: "bg-yellow-500/10",
+                description: "Daily check-in completion",
+            },
+            {
+                title: "Therapy Sessions",
+                value: "0 sessions",
+                icon: Heart,
+                color: "text-rose-500",
+                bgColor: "bg-rose-500/10",
+                description: "Total sessions completed",
+            },
+            {
+                title: "Total Activities",
+                value: "0",
+                icon: ActivityIcon,
+                color: "text-blue-500",
+                bgColor: "bg-blue-500/10",
+                description: "Planned for today",
+            },
+        ] as {
+            title: string;
+            value: string;
+            icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+            color: string;
+            bgColor: string;
+            description: string;
+        }[];
+    }, [baselineScore, combinedValue, dailyScore, stressSummary?.latestDaily]);
 
     const [dailyStats, setDailyStats] = useState<DailyStats>({
         moodScore: null,
@@ -143,6 +222,55 @@ export default function DashboardPage() {
   }
 };
 
+    const handleBaselineSubmit = async (payload: { answers: Record<string, number>; baselineScore?: number }) => {
+        try {
+            const res = await submitBaseline(payload.answers);
+            const updated: StressSummary = {
+                hasBaseline: true,
+                baselineScore: res.baselineScore,
+                baselineCompletedAt: new Date().toISOString(),
+                latestDaily: null,
+            };
+            setStressSummary(updated);
+            setShowBaselineModal(false);
+            setShowDailyModal(true);
+        } catch (error) {
+            console.error("Failed to save baseline", error);
+        }
+    };
+
+    const handleDailySubmit = async (payload: { answers: Record<string, number>; dailyScore?: number }) => {
+        try {
+            if (!stressSummary?.baselineScore && stressSummary?.baselineScore !== 0) {
+                setShowBaselineModal(true);
+                return;
+            }
+            const res = await submitDaily(payload.answers);
+            const combined =
+                res.combinedScore ??
+                combineScores(stressSummary.baselineScore ?? 0, payload.dailyScore ?? 0);
+            const label = res.label ?? labelScore(combined);
+            const updated: StressSummary = {
+                hasBaseline: true,
+                baselineScore: res.baselineScore ?? stressSummary.baselineScore ?? 0,
+                baselineCompletedAt: stressSummary.baselineCompletedAt,
+                latestDaily: {
+                    dailyScore: res.dailyScore,
+                    combinedScore: combined,
+                    label,
+                    createdAt: new Date().toISOString(),
+                },
+            };
+            setStressSummary(updated);
+            setShowDailyModal(false);
+        } catch (error) {
+            console.error("Failed to save daily check-in", error);
+        }
+    };
+
+    const lastMoodLoggedAt =
+        stressSummary?.latestDaily?.createdAt ?? stressSummary?.baselineCompletedAt ?? null;
+
     return (
         <div className="min-h-screen bg-background p-8">
             <Container className="pt-20 pb-8 space-y-6">
@@ -167,6 +295,166 @@ export default function DashboardPage() {
 
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    
+                        <Card className="border-primary/10">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle>Stress & Mood</CardTitle>
+                                        <CardDescription>
+                                            {stressSummary?.hasBaseline
+                                                ? "Baseline ready"
+                                                : "Complete baseline to personalize"}
+                                        </CardDescription>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Status</p>
+                                        <p className="text-xl font-semibold">{stressLabel}</p>
+                                    </div>
+                                    {combinedValue !== null && (
+                                        <div className="text-right">
+                                            <p className="text-sm text-muted-foreground">Combined</p>
+                                            <p className="text-2xl font-bold">
+                                                {Math.round(combinedValue * 100)}%
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div className="rounded-lg border border-border/60 p-2">
+                                        <p className="text-muted-foreground">Baseline</p>
+                                        <p className="font-semibold">
+                                            {baselineScore !== null
+                                                ? `${Math.round(baselineScore * 100)}%`
+                                                : "Pending"}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-lg border border-border/60 p-2">
+                                        <p className="text-muted-foreground">Today</p>
+                                        <p className="font-semibold">
+                                            {dailyScore !== null
+                                                ? `${Math.round(dailyScore * 100)}%`
+                                                : "Not logged"}
+                                        </p>
+                                    </div>
+                                </div>
+                                {lastMoodLoggedAt && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Last mood score logged:{" "}
+                                        {format(new Date(lastMoodLoggedAt), "MMM d, yyyy · h:mm a")}
+                                    </p>
+                                )}
+                                <div className="flex gap-2">
+                                    <Button
+                                        className="flex-1"
+                                        variant="outline"
+                                        onClick={() => setShowBaselineModal(true)}
+                                    >
+                                        Baseline
+                                    </Button>
+                                    <Button className="flex-1" onClick={() => setShowDailyModal(true)}>
+                                        Daily
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <MoodTrend />
+                        <Card className="border-primary/10">
+                            <CardHeader>
+                                <CardTitle>Journaling</CardTitle>
+                                <CardDescription>
+                                    {journalPrompt}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                    <span>Capture how you feel in your own words.</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="xs"
+                                        onClick={() => {
+                                            const prompts = [
+                                                "Write about one thing that is worrying you right now.",
+                                                "List three things you&apos;re grateful for today.",
+                                                "Describe how your body feels when you&apos;re stressed.",
+                                                "What is one kind thing you can say to yourself right now?",
+                                                "If your best friend felt like you do, what would you tell them?",
+                                            ];
+                                            const next =
+                                                prompts[Math.floor(Math.random() * prompts.length)];
+                                            setJournalPrompt(next);
+                                        }}
+                                    >
+                                        New prompt
+                                    </Button>
+                                </div>
+                                <textarea
+                                    className="w-full min-h-[140px] rounded-lg border border-border/60 bg-card/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                    placeholder="Write a few thoughts to lighten the load..."
+                                    value={journalEntry}
+                                    onChange={(e) => setJournalEntry(e.target.value)}
+                                />
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="flex gap-2 text-xs text-muted-foreground flex-wrap">
+                                        <span>Need a break?</span>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="xs"
+                                            onClick={() => {
+                                                if (typeof window === "undefined") return;
+                                                const el = document.getElementById("anxiety-games");
+                                                el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                            }}
+                                        >
+                                            Try a breathing exercise
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="xs"
+                                            onClick={() => {
+                                                if (typeof window === "undefined") return;
+                                                const el = document.getElementById("anxiety-games");
+                                                el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                            }}
+                                        >
+                                            Listen to ocean waves
+                                        </Button>
+                                    </div>
+                                    <div className="flex justify-end">
+                                    <Button
+                                        size="sm"
+                                        onClick={async () => {
+                                            if (!journalEntry.trim() || isSavingJournal) return;
+                                            try {
+                                                setIsSavingJournal(true);
+                                                await logActivityApi({
+                                                    type: "journaling",
+                                                    name: "Journal entry",
+                                                    description: journalEntry.trim(),
+                                                });
+                                                setJournalEntry("");
+                                                alert("Journal entry saved");
+                                            } catch (error) {
+                                                console.error("Failed to save journal entry", error);
+                                                alert("Could not save your note. Please try again.");
+                                            } finally {
+                                                setIsSavingJournal(false);
+                                            }
+                                        }}
+                                        disabled={!journalEntry.trim() || isSavingJournal}
+                                    >
+                                        {isSavingJournal ? "Saving..." : "Save note"}
+                                    </Button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                         <Card className="border-primary/10 relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-primary/10 to-transparent" />
                             <CardContent className="p-6 relative">
@@ -338,6 +626,19 @@ export default function DashboardPage() {
             <ActivityLogger
                 open={showActivityLogger}
                 onOpenChange={setShowActivityLogger}
+            />
+
+            <StressSurveyModal
+                mode="baseline"
+                open={showBaselineModal}
+                onOpenChange={setShowBaselineModal}
+                onSubmit={handleBaselineSubmit}
+            />
+            <StressSurveyModal
+                mode="daily"
+                open={showDailyModal}
+                onOpenChange={setShowDailyModal}
+                onSubmit={handleDailySubmit}
             />
         </div>
     );
